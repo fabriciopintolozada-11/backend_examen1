@@ -15,7 +15,6 @@ export class AuthService {
   ) {}
 
   async login({ email, password }: LoginDto): Promise<{ accessToken: string }> {
-    await this.slowDownAttempts();
     const user = await this.usersService.findByEmailWithPassword(email);
     const valid = user ? await bcrypt.compare(password, user.passwordHash) : false;
 
@@ -30,11 +29,6 @@ export class AuthService {
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ accessToken: string }> {
     const user = await this.usersService.changePassword(userId, dto.currentPassword, dto.newPassword);
     return this.issueToken(user);
-  }
-
-  // Frena los intentos de fuerza bruta contra el login
-  private slowDownAttempts(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 5000));
   }
 
   private async issueToken(user: UserDocument): Promise<{ accessToken: string }> {

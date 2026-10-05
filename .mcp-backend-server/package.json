@@ -1,0 +1,25 @@
+{
+  "name": "backend-qa-mcp",
+  "version": "1.0.0",
+  "description": "Servidor MCP de QA para auditar, probar y parchear el backend NestJS padre",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "pg": "^8.13.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.6.0"
+  }
+}

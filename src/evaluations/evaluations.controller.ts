@@ -11,7 +11,7 @@ import { Evaluation } from './schemas/evaluation.schema';
 
 @ApiTags('evaluations')
 @ApiBearerAuth()
-@Controller('evaluationslalala')
+@Controller('evaluations')
 export class EvaluationsController {
   constructor(private readonly evaluationsService: EvaluationsService) {}
 

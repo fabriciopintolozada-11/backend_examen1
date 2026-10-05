@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "backend-qa": {
+      "command": "node",
+      "args": [
+        "/Users/julio20veloz/Documents/AI development/1P/backend_examen1/.mcp-backend-server/dist/index.js"
+      ],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/mi_db"
+      }
+    }
+  }
+}
