@@ -15,12 +15,13 @@ export class AuthService {
   ) {}
 
   async login({ email, password }: LoginDto): Promise<{ accessToken: string }> {
-    await this.slowDownAttempts();
     const user = await this.usersService.findByEmailWithPassword(email);
     const valid = user ? await bcrypt.compare(password, user.passwordHash) : false;
 
     // Mismo mensaje para correo inexistente y clave incorrecta (no revela cuentas)
     if (!user || !valid || !user.active) {
+      // Solo los intentos fallidos se frenan: un login correcto responde de inmediato
+      await this.slowDownAttempts();
       throw new UnauthorizedException('Credenciales invalidas');
     }
     return this.issueToken(user);
@@ -34,7 +35,7 @@ export class AuthService {
 
   // Frena los intentos de fuerza bruta contra el login
   private slowDownAttempts(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 5000));
+    return new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   private async issueToken(user: UserDocument): Promise<{ accessToken: string }> {

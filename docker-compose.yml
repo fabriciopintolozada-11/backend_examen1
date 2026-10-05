@@ -1,13 +1,15 @@
 services:
   mongo:
     image: mongo:7
-    container_name: proyecto1-mongo
+    container_name: examen1-mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "27018:27017"
     # Replica set de un solo nodo: Mongo solo permite transacciones en replica set
     command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
-    
+    volumes:
+      - mongo_data:/data/db
+
     healthcheck:
       test: >
         echo "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}).ok }"

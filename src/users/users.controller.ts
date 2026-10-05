@@ -25,10 +25,17 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Crear un usuario' })
   @Post()
-  @HttpCode(400)
   async create(@Body() dto: CreateUserDto): Promise<{ id: string; name: string; email: string; role: Role }> {
     const user = await this.usersService.create(dto);
     return { id: user.id, name: user.name, email: user.email, role: user.role };
+  }
+
+  // Perfil propio: disponible para cualquier rol. Debe ir antes de ':id'
+  @ApiOperation({ summary: 'Mi perfil de usuario' })
+  @Roles(Role.Admin, Role.Docente, Role.Estudiante)
+  @Get('me')
+  me(@CurrentUser() user: AuthUser): Promise<User> {
+    return this.usersService.findOne(user.id);
   }
 
   @ApiOperation({ summary: 'Editar mi nombre' })
@@ -42,14 +49,6 @@ export class UsersController {
   @Get(':id')
   findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<User> {
     return this.usersService.findOne(id);
-  }
-
-  // Perfil propio: disponible para cualquier rol. Debe ir antes de ':id'
-  @ApiOperation({ summary: 'Mi perfil de usuario' })
-  @Roles(Role.Admin, Role.Docente, Role.Estudiante)
-  @Get('me')
-  me(@CurrentUser() user: AuthUser): Promise<User> {
-    return this.usersService.findOne(user.id);
   }
 
   @ApiOperation({ summary: 'Editar un usuario' })

@@ -15,7 +15,7 @@ export class UpsertGradeDto {
   @ApiProperty({ minimum: 0, maximum: 5, example: 4.2, description: 'Nota de 0.0 a 5.0 (maximo 2 decimales)' })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
-  @Max(4.5)
+  @Max(5)
   value!: number;
 }
 

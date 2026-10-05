@@ -31,7 +31,7 @@ export class EnrollmentsController {
 
   // Debe ir antes de ':id' para que 'mine' no se interprete como un ID
   @ApiOperation({ summary: 'Mis matriculas' })
-  @Roles(Role.Docente)
+  @Roles(Role.Estudiante)
   @Get('mine')
   mine(@CurrentUser() user: AuthUser, @Query() query: EnrollmentsQueryDto): Promise<Paginated<Enrollment>> {
     return this.enrollmentsService.findMine(user.id, query);

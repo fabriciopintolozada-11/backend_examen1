@@ -11,7 +11,7 @@ import { Subject, SubjectSchema } from '../subjects/schemas/subject.schema';
 import { Teacher, TeacherSchema } from '../teachers/schemas/teacher.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ReportsController } from './reports.controller';
-// import { ReportsService } from './reports.service';
+import { ReportsService } from './reports.service';
 
 @Module({
   imports: [
@@ -29,6 +29,6 @@ import { ReportsController } from './reports.controller';
     PeriodsModule,
   ],
   controllers: [ReportsController],
-  // providers: [ReportsService],
+  providers: [ReportsService],
 })
 export class ReportsModule {}

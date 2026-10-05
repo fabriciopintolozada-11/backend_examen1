@@ -95,7 +95,7 @@ export class GroupsService {
   // El admin gestiona cualquier grupo; un docente solo los que tiene a su cargo
   async assertCanManage(groupId: string, user: AuthUser): Promise<GroupDocument> {
     const group = await this.findRaw(groupId);
-    if (user.role === Role.Estudiante) {
+    if (user.role === Role.Docente) {
       const teacher = await this.teachersService.findByUserId(user.id);
       if (String(group.teacher) !== teacher.id) throw new ForbiddenException('El grupo no esta a tu cargo');
     }

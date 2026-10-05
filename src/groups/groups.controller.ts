@@ -28,18 +28,18 @@ export class GroupsController {
     return this.groupsService.findAll(query);
   }
 
-  @ApiOperation({ summary: 'Ver un grupo por ID' })
-  @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<Group> {
-    return this.groupsService.findOne(id);
-  }
-
   // Debe ir antes de ':id' para que 'mine' no se interprete como un ID
   @ApiOperation({ summary: 'Mis grupos (docente)' })
   @Roles(Role.Docente)
   @Get('mine')
   mine(@CurrentUser() user: AuthUser, @Query() query: GroupsQueryDto): Promise<Paginated<Group>> {
     return this.groupsService.findMine(user.id, query);
+  }
+
+  @ApiOperation({ summary: 'Ver un grupo por ID' })
+  @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<Group> {
+    return this.groupsService.findOne(id);
   }
 
   @ApiOperation({ summary: 'Editar un grupo' })

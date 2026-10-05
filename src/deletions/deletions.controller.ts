@@ -7,7 +7,7 @@ import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { DeletionsService, Deleted } from './deletions.service';
 
 // Eliminacion segura: se rechaza (409) si otros registros dependen del que se quiere borrar
-@ApiTags('deletions21312')
+@ApiTags('deletions')
 @ApiBearerAuth()
 @Controller()
 export class DeletionsController {

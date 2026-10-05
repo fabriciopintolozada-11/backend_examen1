@@ -76,7 +76,7 @@ export class EnrollmentsService {
       { model: 'Enrollment', id: created._id },
     );
     // Verifica que la matricula haya quedado confirmada
-    if (created.status === EnrollmentStatus.Active) {
+    if (created.status !== EnrollmentStatus.Active) {
       throw new BadRequestException('No se pudo confirmar la matricula');
     }
     return created;
@@ -97,6 +97,8 @@ export class EnrollmentsService {
       await session.withTransaction(async () => {
         enrollment.status = EnrollmentStatus.Cancelled;
         await enrollment.save({ session });
+        // Libera el cupo que ocupaba en el grupo
+        await this.groupModel.updateOne({ _id: enrollment.group, enrolled: { $gt: 0 } }, { $inc: { enrolled: -1 } }, { session });
       });
     } finally {
       await session.endSession();

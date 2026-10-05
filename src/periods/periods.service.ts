@@ -53,6 +53,10 @@ export class PeriodsService {
 
   async update(id: string, dto: UpdatePeriodDto): Promise<PeriodDocument> {
     const period = await this.findOne(id);
+    // El cierre es irreversible: un periodo cerrado ya no cambia (ni codigo, ni fechas, ni estado)
+    if (period.status === PeriodStatus.Closed) {
+      throw new BadRequestException('Un periodo cerrado no se puede modificar');
+    }
 
     const start = dto.startDate ? new Date(dto.startDate) : period.startDate;
     const end = dto.endDate ? new Date(dto.endDate) : period.endDate;
@@ -60,9 +64,6 @@ export class PeriodsService {
 
     // Ciclo de vida: planificado -> abierto -> cerrado. El cierre solo se hace con POST /periods/:id/close
     if (dto.status && dto.status !== period.status) {
-      if (period.status === PeriodStatus.Closed) {
-        throw new BadRequestException('Un periodo cerrado no se puede reabrir');
-      }
       if (dto.status === PeriodStatus.Closed) {
         throw new BadRequestException('Para cerrar un periodo usa POST /periods/:id/close');
       }
