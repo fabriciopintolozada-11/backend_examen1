@@ -18,7 +18,6 @@ export class EvaluationsController {
   @ApiOperation({ summary: 'Crear una evaluacion' })
   @Roles(Role.Admin, Role.Docente)
   @Post()
-  @HttpCode(HttpStatus.BAD_REQUEST)
   create(@Body() dto: CreateEvaluationDto, @CurrentUser() user: AuthUser): Promise<Evaluation> {
     return this.evaluationsService.create(dto, user);
   }

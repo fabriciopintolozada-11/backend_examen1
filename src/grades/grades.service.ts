@@ -129,7 +129,7 @@ export class GradesService {
 
     const finalGrade = Math.round(evaluations.reduce((sum, e) => sum + (byEvaluation.get(String(e._id)) as number) * (e.weight / 100), 0) * 100) / 100;
     enrollment.finalGrade = finalGrade;
-    enrollment.status = finalGrade > PASSING_GRADE ? EnrollmentStatus.Passed : EnrollmentStatus.Failed;
+    enrollment.status = finalGrade >= PASSING_GRADE ? EnrollmentStatus.Passed : EnrollmentStatus.Failed;
     await enrollment.save();
 
     const [student, subject] = await Promise.all([

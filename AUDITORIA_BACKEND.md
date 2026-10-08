@@ -1,11 +1,13 @@
 # Auditoría de Backend — Gestión Académica
 
-- **Fecha:** 2026-10-05 17:55:26 UTC
-- **Rama / commit:** `qa/backend-julio` @ `edd8a7d`
+- **Fecha:** 2026-10-05 18:02:09 UTC
+- **Rama / commit:** `qa/backend-julio` @ `723c52a`
 - **Generado por:** Claude Code + backend-qa-server (MCP)
-- **Bugs reportados:** 16 — ✅ PASS: 16 · ❌ FAIL: 0 · ⏳ Pendientes: 0
+- **Bugs reportados:** 35 — ✅ PASS: 35 · ❌ FAIL: 0 · ⏳ Pendientes: 0
 
 ## Resumen ejecutivo
+
+**Segunda pasada:** se añadieron 19 hallazgos más (lógica, autorización, controladores, DTOs, índices y datos) detectados validando todos los documentos con los schemas compilados y leyendo servicios/controladores.
 
 Auditoría ejecutada con el servidor MCP backend-qa (inspect_db_schema_and_models, inspect_env_variables, run_backend_linter_and_typecheck, run_backend_tests, http_request_endpoint, audit_error_handling).
 
@@ -35,13 +37,32 @@ Auditoría ejecutada con el servidor MCP backend-qa (inspect_db_schema_and_model
 | BUG-BE-14 | Media | ORM/DB | `database/subjects.json` | MAT101 era prerrequisito de sí misma; ODON105 con 0 créditos. | ✅ PASS |
 | BUG-BE-15 | Media | ORM/DB | `database/evaluations.json` | Pesos del grupo 6abf…c3a suman 110%. | ✅ PASS |
 | BUG-BE-16 | Media | Config/Env | `.env.example:2 vs docker-compose.yml` | Con cp .env.example .env la API no conecta a Mongo. | ✅ PASS |
+| BUG-BE-17 | Crítica | Service/Lógica | `src/enrollments/enrollments.service.ts:79` | POST /enrollments siempre respondía 400 "No se pudo confirmar la matricula" aunque la matrícula se creaba. | ✅ PASS |
+| BUG-BE-18 | Alta | Service/Lógica | `src/enrollments/enrollments.service.ts:97` | Cancelar una matrícula no liberaba el cupo del grupo. | ✅ PASS |
+| BUG-BE-19 | Alta | Service/Lógica | `src/grades/grades.service.ts:132` | Nota final 3.0 quedaba como reprobada. | ✅ PASS |
+| BUG-BE-20 | Crítica | Autenticación/Middleware | `src/groups/groups.service.ts:98` | Un docente podía gestionar notas/evaluaciones de grupos ajenos; un estudiante recibía 404. | ✅ PASS |
+| BUG-BE-21 | Alta | Service/Lógica | `src/users/users.service.ts:123` | PATCH /auth/change-password devolvía token nuevo pero la clave no cambiaba. | ✅ PASS |
+| BUG-BE-22 | Baja | Service/Lógica | `src/users/users.service.ts:55` | Búsqueda de usuarios sensible a mayúsculas. | ✅ PASS |
+| BUG-BE-23 | Media | Service/Lógica | `src/notifications/notifications.service.ts:69` | Marcar notificación como leída no cambiaba read. | ✅ PASS |
+| BUG-BE-24 | Alta | Controller | `src/evaluations/evaluations.controller.ts:21` | POST /evaluations respondía 400 en éxito. | ✅ PASS |
+| BUG-BE-25 | Alta | Controller | `src/users/users.controller.ts:28` | POST /users respondía 400 en éxito. | ✅ PASS |
+| BUG-BE-26 | Alta | Controller | `src/enrollments/enrollments.controller.ts:34` | GET /enrollments/mine inutilizable (403 estudiantes / 404 docentes). | ✅ PASS |
+| BUG-BE-27 | Alta | Controller | `src/grades/dto/grade.dto.ts:18` | No se podían registrar notas > 4.5. | ✅ PASS |
+| BUG-BE-28 | Alta | Controller | `src/users/dto/user.dto.ts:14` | PATCH /users/:id con name era rechazado. | ✅ PASS |
+| BUG-BE-29 | Media | ORM/DB | `src/grades/schemas/grade.schema.ts:14` | Consultas de notas por evaluación sin índice. | ✅ PASS |
+| BUG-BE-30 | Media | ORM/DB | `src/enrollments/schemas/enrollment.schema.ts:29` | Cierre de periodo/reportes sin índice por period. | ✅ PASS |
+| BUG-BE-31 | Baja | ORM/DB | `src/notifications/schemas/notification.schema.ts:39` | relatedId no poblable. | ✅ PASS |
+| BUG-BE-32 | Alta | ORM/DB | `database/enrollments.json` | Matrícula activa con nota 3.38 en periodo cerrado; otra con subject distinto al del grupo; otra con period distinto a… | ✅ PASS |
+| BUG-BE-33 | Alta | ORM/DB | `database/grades.json` | Nota asociada a "Parcial 2" de otro grupo. | ✅ PASS |
+| BUG-BE-34 | Alta | ORM/DB | `database/groups.json + classrooms` | Dos grupos en salón B-104 (inactivo, 22 cupos) a la misma hora con cupos 32 y 25. | ✅ PASS |
+| BUG-BE-35 | Media | ORM/DB | `database/notifications.json` | type "aviso_urgente" y createdAt "ayer". | ✅ PASS |
 
 ### Distribución por capa
 
-- **Controller:** 1
-- **Service/Lógica:** 1
-- **ORM/DB:** 12
-- **Autenticación/Middleware:** 1
+- **Controller:** 6
+- **Service/Lógica:** 7
+- **ORM/DB:** 19
+- **Autenticación/Middleware:** 2
 - **Config/Env:** 1
 
 ## Detalle de bugs
@@ -381,6 +402,405 @@ Auditoría ejecutada con el servidor MCP backend-qa (inspect_db_schema_and_model
 **Corrección aplicada**
 
 > MONGODB_URI en .env.example cambiado a localhost:27017.
+
+### BUG-BE-17 — Matrícula siempre fallaba
+
+| Campo | Valor |
+|---|---|
+| Capa | Service/Lógica |
+| Severidad | Crítica |
+| Ubicación | `src/enrollments/enrollments.service.ts:79` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> POST /enrollments siempre respondía 400 "No se pudo confirmar la matricula" aunque la matrícula se creaba.
+
+**Causa raíz**
+
+> Condición invertida (=== Active en vez de !== Active).
+
+**Corrección aplicada**
+
+> Condición corregida.
+
+### BUG-BE-18 — Cupo no liberado al cancelar
+
+| Campo | Valor |
+|---|---|
+| Capa | Service/Lógica |
+| Severidad | Alta |
+| Ubicación | `src/enrollments/enrollments.service.ts:97` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Cancelar una matrícula no liberaba el cupo del grupo.
+
+**Causa raíz**
+
+> La transacción solo cambiaba status; nunca decrementaba group.enrolled.
+
+**Corrección aplicada**
+
+> $inc enrolled -1 dentro de la misma transacción.
+
+### BUG-BE-19 — Umbral de aprobación
+
+| Campo | Valor |
+|---|---|
+| Capa | Service/Lógica |
+| Severidad | Alta |
+| Ubicación | `src/grades/grades.service.ts:132` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Nota final 3.0 quedaba como reprobada.
+
+**Causa raíz**
+
+> Comparación finalGrade > PASSING_GRADE (debe ser >=).
+
+**Corrección aplicada**
+
+> Cambiado a >=.
+
+### BUG-BE-20 — Autorización de grupos
+
+| Campo | Valor |
+|---|---|
+| Capa | Autenticación/Middleware |
+| Severidad | Crítica |
+| Ubicación | `src/groups/groups.service.ts:98` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Un docente podía gestionar notas/evaluaciones de grupos ajenos; un estudiante recibía 404.
+
+**Causa raíz**
+
+> assertCanManage comprobaba Role.Estudiante en lugar de Role.Docente.
+
+**Corrección aplicada**
+
+> Estudiante → 403; Docente → solo sus grupos.
+
+### BUG-BE-21 — Cambio de clave no persistía
+
+| Campo | Valor |
+|---|---|
+| Capa | Service/Lógica |
+| Severidad | Alta |
+| Ubicación | `src/users/users.service.ts:123` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> PATCH /auth/change-password devolvía token nuevo pero la clave no cambiaba.
+
+**Causa raíz**
+
+> changePassword nunca llamaba save().
+
+**Corrección aplicada**
+
+> Usa setPassword() que guarda e invalida tokens.
+
+### BUG-BE-22 — Búsqueda case-sensitive
+
+| Campo | Valor |
+|---|---|
+| Capa | Service/Lógica |
+| Severidad | Baja |
+| Ubicación | `src/users/users.service.ts:55` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Búsqueda de usuarios sensible a mayúsculas.
+
+**Causa raíz**
+
+> RegExp sin flag i.
+
+**Corrección aplicada**
+
+> Flag i añadido.
+
+### BUG-BE-23 — markRead incompleto
+
+| Campo | Valor |
+|---|---|
+| Capa | Service/Lógica |
+| Severidad | Media |
+| Ubicación | `src/notifications/notifications.service.ts:69` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Marcar notificación como leída no cambiaba read.
+
+**Causa raíz**
+
+> Solo se asignaba readAt.
+
+**Corrección aplicada**
+
+> read = true.
+
+### BUG-BE-24 — Status 400 en creación de evaluación
+
+| Campo | Valor |
+|---|---|
+| Capa | Controller |
+| Severidad | Alta |
+| Ubicación | `src/evaluations/evaluations.controller.ts:21` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> POST /evaluations respondía 400 en éxito.
+
+**Causa raíz**
+
+> @HttpCode(HttpStatus.BAD_REQUEST).
+
+**Corrección aplicada**
+
+> Eliminado (201 por defecto).
+
+### BUG-BE-25 — Status 400 en creación de usuario
+
+| Campo | Valor |
+|---|---|
+| Capa | Controller |
+| Severidad | Alta |
+| Ubicación | `src/users/users.controller.ts:28` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> POST /users respondía 400 en éxito.
+
+**Causa raíz**
+
+> @HttpCode(400).
+
+**Corrección aplicada**
+
+> Eliminado (201).
+
+### BUG-BE-26 — Rol incorrecto en /enrollments/mine
+
+| Campo | Valor |
+|---|---|
+| Capa | Controller |
+| Severidad | Alta |
+| Ubicación | `src/enrollments/enrollments.controller.ts:34` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> GET /enrollments/mine inutilizable (403 estudiantes / 404 docentes).
+
+**Causa raíz**
+
+> @Roles(Docente) en un endpoint de estudiante.
+
+**Corrección aplicada**
+
+> @Roles(Estudiante).
+
+### BUG-BE-27 — Validación de nota máxima
+
+| Campo | Valor |
+|---|---|
+| Capa | Controller |
+| Severidad | Alta |
+| Ubicación | `src/grades/dto/grade.dto.ts:18` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> No se podían registrar notas > 4.5.
+
+**Causa raíz**
+
+> @Max(4.5) en vez de 5.
+
+**Corrección aplicada**
+
+> @Max(5).
+
+### BUG-BE-28 — DTO de usuario con typo
+
+| Campo | Valor |
+|---|---|
+| Capa | Controller |
+| Severidad | Alta |
+| Ubicación | `src/users/dto/user.dto.ts:14` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> PATCH /users/:id con name era rechazado.
+
+**Causa raíz**
+
+> Propiedad mal escrita namesssss.
+
+**Corrección aplicada**
+
+> Renombrada a name.
+
+### BUG-BE-29 — Índice faltante grades.evaluation
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Media |
+| Ubicación | `src/grades/schemas/grade.schema.ts:14` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Consultas de notas por evaluación sin índice.
+
+**Causa raíz**
+
+> Índice compuesto empieza por enrollment.
+
+**Corrección aplicada**
+
+> index: true en evaluation.
+
+### BUG-BE-30 — Índice faltante enrollments.period
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Media |
+| Ubicación | `src/enrollments/schemas/enrollment.schema.ts:29` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Cierre de periodo/reportes sin índice por period.
+
+**Causa raíz**
+
+> Sin índice simple en period.
+
+**Corrección aplicada**
+
+> index: true.
+
+### BUG-BE-31 — Ref dinámica en notificaciones
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Baja |
+| Ubicación | `src/notifications/schemas/notification.schema.ts:39` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> relatedId no poblable.
+
+**Causa raíz**
+
+> ObjectId sin ref.
+
+**Corrección aplicada**
+
+> refPath relatedModel.
+
+### BUG-BE-32 — Matrículas inconsistentes
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Alta |
+| Ubicación | `database/enrollments.json` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Matrícula activa con nota 3.38 en periodo cerrado; otra con subject distinto al del grupo; otra con period distinto al del grupo.
+
+**Causa raíz**
+
+> Datos inconsistentes con el grupo/periodo.
+
+**Corrección aplicada**
+
+> aprobada; subject y period alineados con el grupo.
+
+### BUG-BE-33 — Nota en evaluación ajena
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Alta |
+| Ubicación | `database/grades.json` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Nota asociada a "Parcial 2" de otro grupo.
+
+**Causa raíz**
+
+> evaluation de un grupo distinto al de la matrícula.
+
+**Corrección aplicada**
+
+> Reasignada a Parcial 2 del grupo correcto.
+
+### BUG-BE-34 — Cruce y sobrecupo de salón
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Alta |
+| Ubicación | `database/groups.json + classrooms` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> Dos grupos en salón B-104 (inactivo, 22 cupos) a la misma hora con cupos 32 y 25.
+
+**Causa raíz**
+
+> Salón inactivo, sobrecupo y cruce de horario.
+
+**Corrección aplicada**
+
+> Grupos movidos a B-101 y B-102.
+
+### BUG-BE-35 — Notificaciones inválidas
+
+| Campo | Valor |
+|---|---|
+| Capa | ORM/DB |
+| Severidad | Media |
+| Ubicación | `database/notifications.json` |
+| Verificación | **PASS** |
+
+**Síntoma**
+
+> type "aviso_urgente" y createdAt "ayer".
+
+**Causa raíz**
+
+> Valores fuera del enum / no fecha.
+
+**Corrección aplicada**
+
+> aviso y fecha válida.
 
 ---
 

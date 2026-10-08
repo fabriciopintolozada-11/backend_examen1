@@ -67,6 +67,7 @@ export class NotificationsService {
     if (String(notification.user) !== userId) throw new ForbiddenException('Esta notificacion no es tuya');
 
     if (!notification.read) {
+      notification.read = true;
       notification.readAt = new Date();
       await notification.save();
     }

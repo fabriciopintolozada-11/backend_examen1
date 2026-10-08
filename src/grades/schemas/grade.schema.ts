@@ -11,7 +11,7 @@ export class Grade {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: Enrollment.name, required: true, index: true })
   enrollment!: Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Evaluation.name, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Evaluation.name, required: true, index: true })
   evaluation!: Types.ObjectId;
 
   @Prop({ required: true, min: 0, max: 5 })

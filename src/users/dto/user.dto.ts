@@ -11,7 +11,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  namesssss?: string;
+  name?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

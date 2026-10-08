@@ -36,7 +36,7 @@ export class Notification {
   @Prop()
   relatedModel?: string;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId })
+  @Prop({ type: MongooseSchema.Types.ObjectId, refPath: 'relatedModel' })
   relatedId?: Types.ObjectId;
 }
 

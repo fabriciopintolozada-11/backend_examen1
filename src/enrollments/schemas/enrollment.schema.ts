@@ -26,7 +26,7 @@ export class Enrollment {
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: Subject.name, required: true })
   subject!: Types.ObjectId;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Period.name, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Period.name, required: true, index: true })
   period!: Types.ObjectId;
 
   @Prop({ required: true, enum: EnrollmentStatus, default: EnrollmentStatus.Active })

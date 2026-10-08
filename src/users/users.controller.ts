@@ -25,7 +25,6 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Crear un usuario' })
   @Post()
-  @HttpCode(400)
   async create(@Body() dto: CreateUserDto): Promise<{ id: string; name: string; email: string; role: Role }> {
     const user = await this.usersService.create(dto);
     return { id: user.id, name: user.name, email: user.email, role: user.role };
